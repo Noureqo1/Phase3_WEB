@@ -1,0 +1,16 @@
+{
+  "users": {
+    "clipsphere_admin": "69c2bbb0ff65d8049452abde",
+    "alice_creator": "69c2bbb0ff65d8049452abe0",
+    "bob_coder": "69c2bbb1ff65d8049452abe2",
+    "chloe_foodie": "69c2bbb1ff65d8049452abe4"
+  },
+  "videos": {
+    "Sunrise in Bali": "69c2bbb1ff65d8049452abe6",
+    "React Hook in 60s": "69c2bbb1ff65d8049452abe7",
+    "Night Market Bites": "69c2bbb1ff65d8049452abe8",
+    "Admin Moderation Demo": "69c2bbb1ff65d8049452abe9",
+    "Extreme Food Challenge": "69c2bbb1ff65d8049452abea",
+    "Full Stack Setup": "69c2bbb1ff65d8049452abeb"
+  }
+}

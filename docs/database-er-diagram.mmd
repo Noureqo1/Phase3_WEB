@@ -1,0 +1,53 @@
+erDiagram
+    USERS {
+        ObjectId _id PK
+        string username "unique"
+        string email "unique"
+        string hashedPassword
+        string role "user|admin"
+        string bio
+        string avatarKey
+        boolean active
+        string accountstatus
+        object notificationPreferences
+        date createdAt
+        date updatedAt
+    }
+
+    VIDEOS {
+        ObjectId _id PK
+        string title
+        string description
+        ObjectId owner FK
+        string videoURL
+        number duration "max 300"
+        array timestamps
+        number viewscount
+        string status "public|private|flagged"
+        date createdAt
+        date updatedAt
+    }
+
+    REVIEWS {
+        ObjectId _id PK
+        number rating "1..5"
+        string comment
+        ObjectId user FK
+        ObjectId video FK
+        date createdAt
+        date updatedAt
+    }
+
+    FOLLOWERS {
+        ObjectId _id PK
+        ObjectId followerid FK
+        ObjectId followingid FK
+        date createdAt
+        date updatedAt
+    }
+
+    USERS ||--o{ VIDEOS : owns
+    USERS ||--o{ REVIEWS : writes
+    VIDEOS ||--o{ REVIEWS : receives
+    USERS ||--o{ FOLLOWERS : follows_as_follower
+    USERS ||--o{ FOLLOWERS : follows_as_following
