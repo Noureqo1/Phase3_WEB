@@ -4,6 +4,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const swaggerUi = require("swagger-ui-express");
 
 const swaggerSpec = require("./config/swagger");
+const { initMinIO } = require("./config/minio");
 const notFound = require("./middleware/notFound");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/authRoutes");
@@ -13,6 +14,11 @@ const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 app.set("etag", false);
+
+// Initialize MinIO on app startup
+initMinIO().catch((error) => {
+  console.error("Warning: MinIO initialization failed:", error.message);
+});
 
 app.use(morgan("dev"));
 app.use(express.json());
