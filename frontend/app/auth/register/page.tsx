@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +40,15 @@ export default function RegisterPage() {
       });
 
       const { token, user } = response.data.data;
-      login(token, user);
+      // Transform user data to match frontend interface
+      const userData = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        notificationPreferences: user.notificationPreferences
+      };
+      login(token, userData);
 
       router.push('/discover');
     } catch (err: any) {

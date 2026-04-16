@@ -1,12 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/providers/AuthProvider';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -37,20 +52,21 @@ export default function Navbar() {
                 >
                   Upload
                 </Link>
-                <div className="relative group">
-                  <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+                <div className="relative" ref={dropdownRef}>
+                  <button 
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                  >
                     <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-                    <span>{user.firstName}</span>
+                    <span>{user.username}</span>
                   </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg hidden group-hover:block">
+                  {dropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
                     <Link
-                      href={`/profile/${user.id}`}
+                      href="/profile"
                       className="block px-4 py-2 text-gray-600 hover:bg-gray-100"
                     >
                       Profile
-                    </Link>
-                    <Link href="/my-videos" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
-                      My Videos
                     </Link>
                     <Link href="/settings" className="block px-4 py-2 text-gray-600 hover:bg-gray-100">
                       Settings
@@ -66,7 +82,8 @@ export default function Navbar() {
                     >
                       Logout
                     </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (

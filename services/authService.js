@@ -18,7 +18,12 @@ const sanitizeUser = (userDoc) => ({
   notificationPreferences: userDoc.notificationPreferences,
 });
 
-const register = async ({ username, email, password }) => {
+const register = async ({ username, firstName, lastName, email, password }) => {
+  // Generate username if not provided
+  if (!username && firstName && lastName) {
+    username = `${firstName.toLowerCase().replace(/\s+/g, '')}${lastName.toLowerCase().replace(/\s+/g, '')}`;
+  }
+
   const existingUser = await User.findOne({
     $or: [{ username }, { email }],
   });

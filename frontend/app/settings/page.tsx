@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   const handleSavePreferences = async () => {
     try {
@@ -60,9 +60,9 @@ export default function SettingsPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Profile Information</h2>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Name</p>
+                <p className="text-sm text-gray-600">Username</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {user?.firstName} {user?.lastName}
+                  {user?.username}
                 </p>
               </div>
               <div>

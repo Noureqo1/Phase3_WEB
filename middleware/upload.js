@@ -79,6 +79,30 @@ const validateVideoDuration = async (filePath, maxDuration = 300) => {
 };
 
 /**
+ * Generate thumbnail from video using FFmpeg
+ */
+const generateThumbnail = (videoPath) => {
+  return new Promise((resolve, reject) => {
+    const thumbnailPath = videoPath.replace(/\.[^/.]+$/, '_thumbnail.jpg');
+    
+    ffmpeg(videoPath)
+      .screenshots({
+        timestamps: ['00:00:02'], // Take screenshot at 2 seconds (better for intros)
+        filename: path.basename(thumbnailPath),
+        folder: path.dirname(thumbnailPath),
+        size: '640x360' // Higher resolution for better quality
+      })
+      .on('end', () => {
+        resolve(`/uploads/${path.basename(thumbnailPath)}`);
+      })
+      .on('error', (err) => {
+        console.error('Error generating thumbnail:', err);
+        reject(err);
+      });
+  });
+};
+
+/**
  * Clean up uploaded file
  */
 const cleanupFile = (filePath) => {
@@ -100,5 +124,6 @@ module.exports = {
   upload,
   getVideoDuration,
   validateVideoDuration,
+  generateThumbnail,
   cleanupFile,
 };

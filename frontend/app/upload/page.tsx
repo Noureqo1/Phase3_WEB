@@ -15,7 +15,7 @@ export default function UploadPage() {
   const [success, setSuccess] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   if (!isAuthenticated) {
     return (

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import ReactPlayer from 'react-player';
-import axios from 'axios';
+import apiClient from '@/lib/services/api';
 import { useAuth } from '@/app/providers/AuthProvider';
 import ReviewForm from '@/components/video/ReviewForm';
 import ReviewList from '@/components/video/ReviewList';
@@ -14,8 +14,7 @@ interface Video {
   duration: number;
   owner: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    username: string;
   };
   videoUrl: string;
   likes: number;
@@ -29,26 +28,32 @@ interface Review {
   comment: string;
   user: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    username: string;
   };
   createdAt: string;
 }
 
-export default function VideoPage({ params }: { params: { id: string } }) {
+export default function VideoPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
-  const [video, setVideo] = useState<Video | null>(null);
+  const [video, setVideo] = useState<any>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLiked, setIsLiked] = useState(false);
+  const [userReview, setUserReview] = useState<any>(null);
+  const [isEditingReview, setIsEditingReview] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  // Unwrap the params Promise
+  const resolvedParams = use(params);
+  const videoId = resolvedParams.id;
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   useEffect(() => {
     const fetchVideo = async () => {
       try {
-        const response = await axios.get(`${API_URL}/videos/${params.id}`);
+        const response = await apiClient.get(`/videos/${videoId}`);
         setVideo(response.data.data);
         setIsLiked(response.data.data.likedBy?.includes(user?.id) || false);
       } catch (err) {
@@ -58,8 +63,32 @@ export default function VideoPage({ params }: { params: { id: string } }) {
       }
     };
 
+    const fetchUserReview = async () => {
+      if (user) {
+        try {
+          const response = await apiClient.get(`/videos/${videoId}/reviews/user`);
+          setUserReview(response.data.data);
+        } catch (err) {
+          // User hasn't reviewed this video yet, which is expected
+          setUserReview(null);
+        }
+      }
+    };
+
+    const fetchAllReviews = async () => {
+      try {
+        const response = await apiClient.get(`/videos/${videoId}/reviews`);
+        setReviews(response.data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch reviews:', err);
+        setReviews([]);
+      }
+    };
+
     fetchVideo();
-  }, [params.id, user?.id, API_URL]);
+    fetchUserReview();
+    fetchAllReviews();
+  }, [videoId, user?.id, API_URL]);
 
   const handleLike = async () => {
     if (!user) {
@@ -69,16 +98,16 @@ export default function VideoPage({ params }: { params: { id: string } }) {
 
     try {
       if (isLiked) {
-        await axios.delete(`${API_URL}/videos/${params.id}/like`);
+        await apiClient.delete(`/videos/${videoId}/like`);
         setIsLiked(false);
         if (video) {
-          setVideo({ ...video, likes: video.likes - 1 });
+          setVideo({ ...video, likes: Math.max(0, (video.likes || 0) - 1) });
         }
       } else {
-        await axios.post(`${API_URL}/videos/${params.id}/like`);
+        await apiClient.post(`/videos/${videoId}/like`);
         setIsLiked(true);
         if (video) {
-          setVideo({ ...video, likes: video.likes + 1 });
+          setVideo({ ...video, likes: (video.likes || 0) + 1 });
         }
       }
     } catch (err) {
@@ -86,8 +115,49 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleReviewSubmit = (newReview: Review) => {
-    setReviews([newReview, ...reviews]);
+  const handleReviewSubmit = async (newReview: Review) => {
+    if (isEditingReview) {
+      // Update existing review in the list
+      setReviews(reviews.map(review => 
+        review.user._id === user?.id ? newReview : review
+      ));
+    } else {
+      // Add new review
+      setReviews([newReview, ...reviews]);
+    }
+    setUserReview(newReview);
+    setIsEditingReview(false);
+    
+    // Refetch all reviews to ensure state is synchronized
+    try {
+      const response = await apiClient.get(`/videos/${videoId}/reviews`);
+      setReviews(response.data.data || []);
+    } catch (err) {
+      console.error('Failed to refetch reviews:', err);
+    }
+  };
+
+  const handleReviewDelete = async () => {
+    try {
+      await apiClient.delete(`/videos/${videoId}/reviews`);
+      setUserReview(null);
+      setIsEditingReview(false);
+      
+      // Refetch all reviews to ensure state is synchronized
+      try {
+        const response = await apiClient.get(`/videos/${videoId}/reviews`);
+        setReviews(response.data.data || []);
+      } catch (err) {
+        console.error('Failed to refetch reviews:', err);
+      }
+    } catch (err) {
+      console.error('Failed to delete review:', err);
+      alert('Failed to delete review');
+    }
+  };
+
+  const handleReviewEditCancel = () => {
+    setIsEditingReview(false);
   };
 
   if (loading) {
@@ -117,14 +187,52 @@ export default function VideoPage({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Video Player */}
-        <div className="bg-black rounded-lg overflow-hidden mb-6 aspect-video">
-          <ReactPlayer
-            url={video.videoUrl}
-            controls
-            width="100%"
-            height="100%"
-            playing={false}
-          />
+        <div 
+          className="rounded-lg overflow-hidden mb-6 aspect-video"
+          style={{
+            backgroundImage: video.thumbnail ? `url(${video.thumbnail})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundColor: video.thumbnail ? 'transparent' : '#000'
+          }}
+        >
+          {videoError ? (
+            <div className="w-full h-full flex items-center justify-center bg-gray-900">
+              <div className="text-center text-white p-8">
+                <div className="text-6xl mb-4">🎬</div>
+                <h3 className="text-xl font-semibold mb-2">Video unavailable</h3>
+                <p className="text-gray-400 mb-4">This video cannot be played at the moment</p>
+                <button 
+                  onClick={() => setVideoError(false)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : (
+            <ReactPlayer
+              src={video.videoUrl || ''}
+              controls
+              width="100%"
+              height="100%"
+              playing={false}
+              poster={video.thumbnail || ''}
+              config={{
+                file: {
+                  forceVideo: true,
+                  attributes: {
+                    crossOrigin: 'anonymous',
+                    poster: video.thumbnail || ''
+                  }
+                }
+              } as any}
+              onError={(e) => {
+                console.error('Video player error:', e);
+                setVideoError(true);
+              }}
+            />
+          )}
         </div>
 
         {/* Video Info */}
@@ -134,11 +242,11 @@ export default function VideoPage({ params }: { params: { id: string } }) {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{video.title}</h1>
               <p className="text-gray-600 mb-4">{video.description}</p>
               <p className="text-sm text-gray-500">
-                By {video.owner.firstName} {video.owner.lastName}
+                By {video.owner.username}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900 mb-2">{video.likes}</p>
+              <p className="text-2xl font-bold text-gray-900 mb-2">{video.likes || 0}</p>
               <p className="text-gray-500 mb-4">Likes</p>
               <button
                 onClick={handleLike}
@@ -172,7 +280,41 @@ export default function VideoPage({ params }: { params: { id: string } }) {
             Reviews ({reviews.length})
           </h2>
 
-          {user && <ReviewForm videoId={params.id} onSubmit={handleReviewSubmit} />}
+          {user && (!userReview || isEditingReview) && (
+            <ReviewForm 
+              videoId={videoId} 
+              onSubmit={handleReviewSubmit} 
+              onCancel={isEditingReview ? handleReviewEditCancel : undefined}
+              existingReview={isEditingReview ? userReview : undefined}
+            />
+          )}
+          {user && userReview && !isEditingReview && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-green-800 font-semibold">Your Review</p>
+                  <p className="text-green-700 text-sm mt-1">
+                    Rating: {userReview.rating} stars
+                    {userReview.comment && <><br />Comment: "{userReview.comment}"</>}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsEditingReview(true)}
+                    className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={handleReviewDelete}
+                    className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition"
+                  >
+                    🗑️ Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <ReviewList
             reviews={reviews}

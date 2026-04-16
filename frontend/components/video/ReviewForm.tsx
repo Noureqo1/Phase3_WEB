@@ -1,20 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import axios from 'axios';
+import apiClient from '@/lib/services/api';
 
 interface ReviewFormProps {
   videoId: string;
   onSubmit: (review: any) => void;
+  onCancel?: () => void;
+  existingReview?: any;
 }
 
-export default function ReviewForm({ videoId, onSubmit }: ReviewFormProps) {
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
+export default function ReviewForm({ videoId, onSubmit, onCancel, existingReview }: ReviewFormProps) {
+  const [rating, setRating] = useState(existingReview?.rating || 0);
+  const [comment, setComment] = useState(existingReview?.comment || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,24 +25,33 @@ export default function ReviewForm({ videoId, onSubmit }: ReviewFormProps) {
       return;
     }
 
+    // Check if user is authenticated
+    const token = document.cookie.split(';').find(cookie => cookie.trim().startsWith('token='));
+    if (!token) {
+      setError('Please log in to submit a review');
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await axios.post(
-        `${API_URL}/videos/${videoId}/reviews`,
-        { rating, comment },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await apiClient({
+        method: existingReview ? 'PATCH' : 'POST',
+        url: `/videos/${videoId}/reviews`,
+        data: { rating, comment }
+      });
 
       onSubmit(response.data.data);
-      setRating(0);
-      setComment('');
+      if (!existingReview) {
+        setRating(0);
+        setComment('');
+      }
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit review');
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        setError('You have already reviewed this video');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to submit review');
+      }
     } finally {
       setLoading(false);
     }
@@ -48,6 +59,9 @@ export default function ReviewForm({ videoId, onSubmit }: ReviewFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="mb-8 p-4 bg-gray-50 rounded-lg">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        {existingReview ? 'Edit Your Review' : 'Write a Review'}
+      </h3>
       <div className="mb-4">
         <label className="block text-gray-700 font-semibold mb-2">Rating</label>
         <div className="flex gap-2">
@@ -79,13 +93,25 @@ export default function ReviewForm({ videoId, onSubmit }: ReviewFormProps) {
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-      >
-        {loading ? 'Submitting...' : 'Submit Review'}
-      </button>
+      <div className="flex gap-3">
+        {existingReview && onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:bg-gray-400"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+        >
+          {loading ? 'Submitting...' : (existingReview ? 'Update Review' : 'Submit Review')}
+        </button>
+      </div>
     </form>
   );
 }

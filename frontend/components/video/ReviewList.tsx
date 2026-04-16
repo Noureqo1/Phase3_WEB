@@ -6,8 +6,7 @@ interface Review {
   comment: string;
   user: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    username: string;
   };
   createdAt: string;
 }
@@ -30,7 +29,7 @@ export default function ReviewList({ reviews, currentUserId, isOwner }: ReviewLi
           <div className="flex justify-between items-start mb-2">
             <div>
               <p className="font-semibold text-gray-900">
-                {review.user.firstName} {review.user.lastName}
+                {review.user.username}
               </p>
               <div className="flex gap-1">
                 {[...Array(review.rating)].map((_, i) => (

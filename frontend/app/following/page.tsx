@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import VideoCard from '@/components/video/VideoCard';
+import VideoSearch from '@/components/video/VideoSearch';
+import FilterDropdown from '@/components/video/FilterDropdown';
 
 interface Video {
   _id: string;
@@ -12,8 +14,7 @@ interface Video {
   duration: number;
   owner: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    username: string;
   };
   videoUrl: string;
   thumbnail?: string;
@@ -28,42 +29,65 @@ export default function FollowingPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-
-  const fetchVideos = useCallback(async (pageNum: number) => {
-    try {
-      setLoading(true);
-      const token = Cookies.get('token');
-      const skip = (pageNum - 1) * 12;
-      
-      const response = await axios.get(
-        `${API_URL}/videos/feed/following`,
-        {
-          params: { skip, limit: 12 },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const newVideos = response.data.data || [];
-      if (newVideos.length === 0) {
-        setHasMore(false);
-      } else {
-        setVideos((prev) => (pageNum === 1 ? newVideos : [...prev, ...newVideos]));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch videos');
-    } finally {
-      setLoading(false);
-    }
-  }, [API_URL]);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   useEffect(() => {
-    fetchVideos(1);
-  }, [fetchVideos]);
+    const fetchInitialVideos = async () => {
+      try {
+        setLoading(true);
+        const token = Cookies.get('token');
+        const params: any = { skip: 0, limit: 12 };
+        if (searchQuery) {
+          params.search = searchQuery;
+        }
+        if (sortBy) {
+          params.sortBy = sortBy;
+        }
+        
+        const response = await axios.get(
+          `${API_URL}/videos/feed/following`,
+          {
+            params,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const newVideos = response.data.data || [];
+        setVideos(newVideos);
+        if (newVideos.length === 0) {
+          setHasMore(false);
+        } else {
+          setHasMore(true);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch videos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialVideos();
+  }, [API_URL, searchQuery, sortBy]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setPage(1);
+    setVideos([]);
+    setHasMore(true);
+  };
+
+  const handleFilterChange = (filter: string) => {
+    setSortBy(filter);
+    setPage(1);
+    setVideos([]);
+    setHasMore(true);
+  };
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -81,13 +105,55 @@ export default function FollowingPage() {
     }
 
     return () => observer.disconnect();
-  }, [hasMore, loading]);
+  }, [hasMore, loading, API_URL]);
 
+  // Fetch additional pages when page changes
   useEffect(() => {
     if (page > 1) {
-      fetchVideos(page);
+      const fetchMoreVideos = async () => {
+        try {
+          setLoading(true);
+          const token = Cookies.get('token');
+          const skip = (page - 1) * 12;
+          const params: any = { skip, limit: 12 };
+          if (searchQuery) {
+            params.search = searchQuery;
+          }
+          if (sortBy) {
+            params.sortBy = sortBy;
+          }
+          
+          const response = await axios.get(
+            `${API_URL}/videos/feed/following`,
+            {
+              params,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const newVideos = response.data.data || [];
+          if (newVideos.length === 0) {
+            setHasMore(false);
+          } else {
+            // Deduplicate videos by ID to prevent duplicates
+            setVideos((prev) => {
+              const existingIds = new Set(prev.map(v => v._id));
+              const uniqueNewVideos = newVideos.filter((video: Video) => !existingIds.has(video._id));
+              return [...prev, ...uniqueNewVideos];
+            });
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch videos');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchMoreVideos();
     }
-  }, [page, fetchVideos]);
+  }, [page, API_URL]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -102,6 +168,13 @@ export default function FollowingPage() {
             {error}
           </div>
         )}
+
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1">
+            <VideoSearch onSearch={handleSearch} placeholder="Search videos from people you follow..." />
+          </div>
+          <FilterDropdown onFilterChange={handleFilterChange} currentFilter={sortBy} />
+        </div>
 
         {/* Video Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">

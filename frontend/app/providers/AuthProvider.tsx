@@ -7,8 +7,7 @@ import Cookies from 'js-cookie';
 interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  username: string;
   role: 'user' | 'admin';
   notificationPreferences?: {
     email: boolean;
@@ -43,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/users/me`,
+          `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/users/me`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -73,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Cookies.remove('token');
     setUser(null);
     setError(null);
+    // Redirect to login page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth/login';
+    }
   };
 
   const updateUser = (userData: User) => {

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { useAuth } from '@/app/providers/AuthProvider';
 import Cookies from 'js-cookie';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +31,15 @@ export default function LoginPage() {
       });
 
       const { token, user } = response.data.data;
-      login(token, user);
+      // Transform user data to match frontend interface
+      const userData = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        notificationPreferences: user.notificationPreferences
+      };
+      login(token, userData);
 
       const from = searchParams.get('from') || '/discover';
       router.push(from);
@@ -96,5 +104,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

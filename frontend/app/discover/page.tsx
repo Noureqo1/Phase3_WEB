@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
 import VideoCard from '@/components/video/VideoCard';
+import VideoSearch from '@/components/video/VideoSearch';
+import FilterDropdown from '@/components/video/FilterDropdown';
 
 interface Video {
   _id: string;
@@ -11,8 +13,7 @@ interface Video {
   duration: number;
   owner: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    username: string;
   };
   videoUrl: string;
   thumbnail?: string;
@@ -27,35 +28,100 @@ export default function DiscoverPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('popular');
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const fetchVideos = useCallback(async (pageNum: number) => {
+  useEffect(() => {
+    const fetchInitialVideos = async () => {
+      try {
+        setLoading(true);
+        const params: any = { skip: 0, limit: 12 };
+        if (searchQuery) {
+          params.search = searchQuery;
+        }
+        if (sortBy) {
+          params.sortBy = sortBy;
+        }
+        
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/videos/feed/trending`,
+          { params }
+        );
+
+        const newVideos = response.data.data || [];
+        setVideos(newVideos);
+        if (newVideos.length === 0) {
+          setHasMore(false);
+        } else {
+          setHasMore(true);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch videos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialVideos();
+  }, [searchQuery, sortBy]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setPage(1);
+    setVideos([]);
+    setHasMore(true);
+  };
+
+  const handleFilterChange = (filter: string) => {
+    setSortBy(filter);
+    setPage(1);
+    setVideos([]);
+    setHasMore(true);
+  };
+
+  const fetchMoreVideos = useCallback(async () => {
+    if (loading || !hasMore) return;
+
     try {
       setLoading(true);
-      const skip = (pageNum - 1) * 12;
+      const params: any = { skip: page * 12, limit: 12 };
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+      if (sortBy) {
+        params.sortBy = sortBy;
+      }
+      
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/videos`,
-        {
-          params: { skip, limit: 12 },
-        }
+        `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/videos/feed/trending`,
+        { params }
       );
 
       const newVideos = response.data.data || [];
+      setVideos(prev => {
+        const existingIds = new Set(prev.map(v => v._id));
+        const filtered = newVideos.filter((v: Video) => !existingIds.has(v._id));
+        return [...prev, ...filtered];
+      });
+
       if (newVideos.length === 0) {
         setHasMore(false);
-      } else {
-        setVideos((prev) => (pageNum === 1 ? newVideos : [...prev, ...newVideos]));
       }
+      setPage(prev => prev + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch videos');
+      setError(err instanceof Error ? err.message : 'Failed to fetch more videos');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loading, hasMore, page, searchQuery]);
 
+  // Fetch additional pages when page changes
   useEffect(() => {
-    fetchVideos(1);
-  }, [fetchVideos]);
+    if (page > 1) {
+      fetchMoreVideos();
+    }
+  }, [page]);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -75,12 +141,6 @@ export default function DiscoverPage() {
     return () => observer.disconnect();
   }, [hasMore, loading]);
 
-  useEffect(() => {
-    if (page > 1) {
-      fetchVideos(page);
-    }
-  }, [page, fetchVideos]);
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -94,6 +154,13 @@ export default function DiscoverPage() {
             {error}
           </div>
         )}
+
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1">
+            <VideoSearch onSearch={handleSearch} placeholder="Search videos by title..." />
+          </div>
+          <FilterDropdown onFilterChange={handleFilterChange} currentFilter={sortBy} />
+        </div>
 
         {/* Video Grid - Responsive: 1 col mobile, 2 tablet, 3-4 desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">

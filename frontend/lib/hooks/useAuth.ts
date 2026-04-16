@@ -23,11 +23,11 @@ export const useAuth = () => {
         });
 
         setUser(response.data.data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch user:', err);
         // Clear invalid token
         Cookies.remove('token');
-        setError(err.message);
+        setError(err.message || 'Failed to authenticate');
       } finally {
         setLoading(false);
       }
@@ -36,7 +36,7 @@ export const useAuth = () => {
     fetchUser();
   }, []);
 
-  const login = (token, userData) => {
+  const login = (token: string, userData: any) => {
     Cookies.set('token', token, { expires: 7 });
     setUser(userData);
   };
