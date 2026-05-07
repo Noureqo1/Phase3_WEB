@@ -83,6 +83,10 @@ const createVideos = async (users) => {
       duration: 30,
       timestamps: [5, 12, 24],
       status: "public",
+      likes: 150,
+      viewscount: 1200,
+      reviewCount: 2,
+      avgRating: 4.5,
     },
     {
       title: "React Hook in 60s",
@@ -92,6 +96,10 @@ const createVideos = async (users) => {
       duration: 60,
       timestamps: [10, 25, 48],
       status: "public",
+      likes: 200,
+      viewscount: 2500,
+      reviewCount: 2,
+      avgRating: 4,
     },
     {
       title: "Night Market Bites",
@@ -101,6 +109,10 @@ const createVideos = async (users) => {
       duration: 95,
       timestamps: [20, 49, 77],
       status: "public",
+      likes: 180,
+      viewscount: 1800,
+      reviewCount: 1,
+      avgRating: 5,
     },
     {
       title: "Admin Moderation Demo",
@@ -110,6 +122,10 @@ const createVideos = async (users) => {
       duration: 45,
       timestamps: [8, 19, 31],
       status: "private",
+      likes: 0,
+      viewscount: 50,
+      reviewCount: 0,
+      avgRating: 0,
     },
     {
       title: "Extreme Food Challenge",
@@ -119,6 +135,10 @@ const createVideos = async (users) => {
       duration: 120,
       timestamps: [14, 40, 92],
       status: "flagged",
+      likes: 50,
+      viewscount: 500,
+      reviewCount: 2,
+      avgRating: 1.5,
     },
     {
       title: "Full Stack Setup",
@@ -128,6 +148,10 @@ const createVideos = async (users) => {
       duration: 240,
       timestamps: [30, 90, 180],
       status: "public",
+      likes: 120,
+      viewscount: 900,
+      reviewCount: 1,
+      avgRating: 4,
     },
   ];
 

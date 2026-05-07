@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import axios from 'axios';
-import Cookies from 'js-cookie';
+import { useState, useEffect } from 'react';
+import apiClient from '@/lib/services/api';
 import { useAuth } from '@/app/providers/AuthProvider';
+import Cookies from 'js-cookie';
 
 export default function UploadPage() {
   const { user, isAuthenticated } = useAuth();
@@ -15,8 +15,7 @@ export default function UploadPage() {
   const [success, setSuccess] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-
+  
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -33,16 +32,29 @@ export default function UploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file type
-      if (!selectedFile.type.startsWith('video/')) {
-        setError('Please select a valid video file');
+      // Only accept MP4 files
+      if (selectedFile.type !== 'video/mp4') {
+        setError('Please select a valid MP4 video file');
         return;
       }
-      // Validate file size (max 500MB)
+      
+      // Check file extension
+      const fileName = selectedFile.name.toLowerCase();
+      if (!fileName.endsWith('.mp4')) {
+        setError('Please select a file with .mp4 extension');
+        return;
+      }
+      
+      // Validate file size (min 1MB, max 500MB)
+      if (selectedFile.size < 1024 * 1024) {
+        setError('File size must be at least 1MB for a valid video');
+        return;
+      }
       if (selectedFile.size > 500 * 1024 * 1024) {
         setError('File size must be less than 500MB');
         return;
       }
+      
       setFile(selectedFile);
       setError(null);
     }
@@ -58,7 +70,6 @@ export default function UploadPage() {
     try {
       setLoading(true);
       setError(null);
-      const token = Cookies.get('token');
 
       // Create FormData for file upload
       const formData = new FormData();
@@ -66,13 +77,16 @@ export default function UploadPage() {
       formData.append('title', title);
       formData.append('description', description);
 
+      // Get token and manually add Authorization header
+      const token = Cookies.get('token');
+
       // Upload video with progress tracking
-      const response = await axios.post(`${API_URL}/videos`, formData, {
+      const response = await apiClient.post('/videos', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
+          ...(token && { Authorization: `Bearer ${token}` }),
+          // Don't set Content-Type - let Axios set it with boundary for FormData
         },
-        onUploadProgress: (progressEvent) => {
+        onUploadProgress: (progressEvent: any) => {
           const percent = Math.round(
             (progressEvent.loaded * 100) / (progressEvent.total || 1)
           );
@@ -91,7 +105,22 @@ export default function UploadPage() {
         window.location.href = `/video/${response.data.data._id}`;
       }, 2000);
     } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'Failed to upload video';
+      console.error('Upload error details:', err);
+      console.error('Error response:', err.response);
+      console.error('Error status:', err.response?.status);
+      console.error('Error data:', err.response?.data);
+      console.error('Error message:', err.message);
+      
+      let message = 'Failed to upload video';
+      
+      if (err.response?.status === 401) {
+        message = 'Authentication expired. Please log in again.';
+      } else if (err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err.message) {
+        message = err.message;
+      }
+      
       setError(message);
       setUploadProgress(0);
     } finally {
@@ -113,7 +142,27 @@ export default function UploadPage() {
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg">
-              ✗ {error}
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="font-semibold">✗ {error}</span>
+                  {error.includes('Authentication') && (
+                    <div className="mt-2">
+                      <a 
+                        href="/auth/login?force=true" 
+                        className="text-purple-600 hover:underline font-medium"
+                      >
+                        → Click here to log in again
+                      </a>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           )}
 
@@ -124,7 +173,7 @@ export default function UploadPage() {
               <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-600 transition">
                 <input
                   type="file"
-                  accept="video/*"
+                  accept="video/mp4"
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   disabled={loading}
@@ -139,7 +188,7 @@ export default function UploadPage() {
                       : 'Drag and drop your video here or click to browse'}
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
-                    Max 500MB • Supports MP4, AVI, MOV • Max 5 minutes
+                    Min 1MB • Max 500MB • MP4 format only • Max 5 minutes
                   </p>
                 </div>
               </div>

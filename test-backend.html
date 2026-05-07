@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Test</title>
+</head>
+<body>
+    <h1>Backend Connection Test</h1>
+    <button onclick="testBackend()">Test Backend</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testBackend() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing...';
+            
+            try {
+                // Test basic connection
+                const response = await fetch('http://localhost:5000/api/v1/videos', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    result.innerHTML = '<p style="color: green;">✓ Backend is running and accessible!</p>';
+                } else {
+                    result.innerHTML = `<p style="color: red;">✗ Backend responded with status: ${response.status}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">✗ Cannot connect to backend: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

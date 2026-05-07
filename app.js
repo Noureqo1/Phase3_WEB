@@ -12,7 +12,15 @@ const fs = require("fs");
 
 const path = require("path");
 
-
+const { 
+  helmetConfig, 
+  corsConfig, 
+  apiLimiter, 
+  authLimiter, 
+  uploadLimiter, 
+  paymentLimiter, 
+  interactionLimiter 
+} = require("./middleware/security");
 
 const swaggerSpec = require("./config/swagger");
 
@@ -29,6 +37,8 @@ const userRoutes = require("./routes/userRoutes");
 const videoRoutes = require("./routes/videoRoutes");
 
 const adminRoutes = require("./routes/adminRoutes");
+
+const stripeRoutes = require("./routes/stripeRoutes");
 
 
 
@@ -50,17 +60,27 @@ initMinIO().catch((error) => {
 
 app.use(morgan("dev"));
 
-app.use(cors({
+// Security middleware
+app.use(helmetConfig);
+app.use(corsConfig);
 
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'],
+// Rate limiting
+app.use(apiLimiter);
 
-  credentials: true
+// Body parser middleware (skip multipart/form-data - multer handles that)
+app.use((req, res, next) => {
+  if (req.is('multipart/form-data')) {
+    return next();
+  }
+  express.json({ limit: '10mb' })(req, res, next);
+});
 
-}));
-
-app.use(express.json());
-
-app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  if (req.is('multipart/form-data')) {
+    return next();
+  }
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 app.use(mongoSanitize());
 
@@ -70,6 +90,16 @@ app.use(mongoSanitize());
 
 app.use('/uploads', (req, res, next) => {
 
+  // Set CORS headers for all requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   // Handle range requests for video streaming
 
   if (req.method === 'GET' && req.headers.range) {
@@ -238,7 +268,7 @@ app.use("/api-docs", (req, res, next) => {
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/auth", authLimiter, authRoutes);
 
 app.use("/api/v1/users", userRoutes);
 
@@ -246,7 +276,24 @@ app.use("/api/v1/videos", videoRoutes);
 
 app.use("/api/v1/admin", adminRoutes);
 
+app.use("/api/v1/stripe", paymentLimiter, stripeRoutes);
 
+// Multer error handler
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'File size too large. Maximum size is 500MB.' }
+    });
+  }
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Unexpected file field. Expected "file".' }
+    });
+  }
+  next(err);
+});
 
 app.use(notFound);
 

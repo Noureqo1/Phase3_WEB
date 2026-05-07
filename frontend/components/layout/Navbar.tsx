@@ -27,13 +27,13 @@ export default function Navbar() {
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
+          {/* Left side - Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg"></div>
             <span className="text-xl font-bold text-gray-900">ClipSphere</span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Middle - Navigation Items */}
           <div className="hidden md:flex items-center gap-8">
             {user ? (
               <>
@@ -46,18 +46,51 @@ export default function Navbar() {
                 <Link href="/following" className="text-gray-600 hover:text-gray-900">
                   Following
                 </Link>
+                {user.role === 'admin' && (
+                  <Link href="/admin" className="text-gray-600 hover:text-gray-900 font-medium">
+                    Admin
+                  </Link>
+                )}
                 <Link
                   href="/upload"
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
                   Upload
                 </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/discover" className="text-gray-600 hover:text-gray-900">
+                  Discover
+                </Link>
+                <Link href="/trending" className="text-gray-600 hover:text-gray-900">
+                  Trending
+                </Link>
+                <Link href="/following" className="text-gray-600 hover:text-gray-900">
+                  Following
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Right side - User Actions */}
+          <div className="hidden md:flex items-center gap-4">
+            {user ? (
+              <>
                 <div className="relative" ref={dropdownRef}>
                   <button 
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
                   >
-                    <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+                    {user.avatarKey ? (
+                      <img 
+                        src={`http://localhost:5000/uploads/avatars/${user.avatarKey}`}
+                        alt={user.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+                    )}
                     <span>{user.username}</span>
                   </button>
                   {dropdownOpen && (
@@ -76,26 +109,23 @@ export default function Navbar() {
                         Admin Dashboard
                       </Link>
                     )}
-                    <button
-                      onClick={logout}
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                    >
-                      Logout
-                    </button>
                     </div>
                   )}
                 </div>
+                <button
+                  onClick={logout}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Logout
+                </button>
               </>
             ) : (
               <>
-                <Link href="/discover" className="text-gray-600 hover:text-gray-900">
-                  Discover
-                </Link>
-                <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">
+                <Link href="/auth/login?force=true" className="text-gray-600 hover:text-gray-900">
                   Login
                 </Link>
                 <Link
-                  href="/auth/register"
+                  href="/auth/register?force=true"
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
                   Sign Up
@@ -134,12 +164,23 @@ export default function Navbar() {
                 <Link href="/following" className="block py-2 text-gray-600 hover:text-gray-900">
                   Following
                 </Link>
+                {user.role === 'admin' && (
+                  <Link href="/admin" className="block py-2 text-gray-600 hover:text-gray-900 font-medium">
+                    Admin
+                  </Link>
+                )}
                 <Link
                   href="/upload"
                   className="block py-2 px-4 bg-purple-600 text-white rounded-lg mt-2"
                 >
                   Upload Video
                 </Link>
+                <button
+                  onClick={logout}
+                  className="w-full py-2 px-4 bg-red-600 text-white rounded-lg mt-2"
+                >
+                  Logout
+                </button>
                 <Link href={`/profile/${user.id}`} className="block py-2 text-gray-600">
                   Profile
                 </Link>
@@ -154,22 +195,16 @@ export default function Navbar() {
                     Admin Dashboard
                   </Link>
                 )}
-                <button
-                  onClick={logout}
-                  className="w-full text-left py-2 text-red-600 mt-2"
-                >
-                  Logout
-                </button>
               </>
             ) : (
               <>
                 <Link href="/discover" className="block py-2 text-gray-600">
                   Discover
                 </Link>
-                <Link href="/auth/login" className="block py-2 text-gray-600">
+                <Link href="/auth/login?force=true" className="block py-2 text-gray-600">
                   Login
                 </Link>
-                <Link href="/auth/register" className="block py-2 px-4 bg-purple-600 text-white rounded-lg mt-2">
+                <Link href="/auth/register?force=true" className="block py-2 px-4 bg-purple-600 text-white rounded-lg mt-2">
                   Sign Up
                 </Link>
               </>

@@ -6,6 +6,7 @@ const publicRoutes = ['/auth/login', '/auth/register'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('token')?.value;
+  const forceAuth = request.nextUrl.searchParams.get('force') === 'true';
 
   // Check if route requires authentication
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
@@ -20,7 +21,8 @@ export function middleware(request: NextRequest) {
   }
 
   // If already authenticated and accessing login/register, redirect to home
-  if (isPublicRoute && token) {
+  // unless force=true parameter is set
+  if (isPublicRoute && token && !forceAuth) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);

@@ -1,4 +1,5 @@
 const express = require("express");
+const multer = require("multer");
 
 const userController = require("../controllers/userController");
 const validate = require("../middleware/validate");
@@ -11,7 +12,23 @@ const {
 
 const router = express.Router();
 
+// Configure multer for avatar uploads
+const upload = multer({
+  dest: "uploads/avatars/",
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"), false);
+    }
+  },
+});
+
 router.get("/me", protect, userController.getMe);
+router.post("/upload-avatar", protect, upload.single("avatar"), userController.uploadAvatar);
 router.patch(
   "/updateMe",
   protect,

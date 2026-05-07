@@ -3,9 +3,8 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import axios from 'axios';
+import { authAPI } from '@/lib/services/api';
 import { useAuth } from '@/app/providers/AuthProvider';
-import Cookies from 'js-cookie';
 
 function LoginPageContent() {
   const router = useRouter();
@@ -17,15 +16,13 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError(null);
 
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await authAPI.login({
         email,
         password,
       });
@@ -41,7 +38,8 @@ function LoginPageContent() {
       };
       login(token, userData);
 
-      const from = searchParams.get('from') || '/discover';
+      // Redirect admin users to dashboard, others to discover or specified page
+      const from = searchParams.get('from') || (user.role === 'admin' ? '/admin' : '/discover');
       router.push(from);
     } catch (err: any) {
       const message = err.response?.data?.message || 'Failed to login';

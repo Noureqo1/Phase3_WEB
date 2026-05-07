@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { authAPI } from '@/lib/services/api';
 import { useAuth } from '@/app/providers/AuthProvider';
 
 export default function RegisterPage() {
@@ -18,8 +18,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -32,7 +30,7 @@ export default function RegisterPage() {
       setLoading(true);
       setError(null);
 
-      const response = await axios.post(`${API_URL}/auth/register`, {
+      const response = await authAPI.register({
         firstName,
         lastName,
         email,

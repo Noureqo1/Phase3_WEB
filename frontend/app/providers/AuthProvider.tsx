@@ -1,14 +1,17 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import axios from 'axios';
+import apiClient from '@/lib/services/api';
 import Cookies from 'js-cookie';
+import socketService from '@/lib/socket';
 
 interface User {
   id: string;
   email: string;
   username: string;
   role: 'user' | 'admin';
+  avatarKey?: string;
+  createdAt?: string;
   notificationPreferences?: {
     email: boolean;
     inApp: boolean;
@@ -41,16 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/users/me`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await apiClient.get('/users/me');
 
         setUser(response.data.data);
+        
+        // Connect to Socket.io when user is fetched
+        socketService.connect(token);
       } catch (err) {
         console.error('Failed to fetch user:', err);
         Cookies.remove('token');
@@ -66,12 +65,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (token: string, userData: User) => {
     Cookies.set('token', token, { expires: 7 });
     setUser(userData);
+    
+    // Connect to Socket.io when user logs in
+    socketService.connect(token);
   };
 
   const logout = () => {
     Cookies.remove('token');
     setUser(null);
     setError(null);
+    
+    // Disconnect from Socket.io when user logs out
+    socketService.disconnect();
+    
     // Redirect to login page
     if (typeof window !== 'undefined') {
       window.location.href = '/auth/login';

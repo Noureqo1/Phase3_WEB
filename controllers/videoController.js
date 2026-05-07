@@ -7,6 +7,11 @@ const AppError = require("../utils/AppError");
 
 const createVideo = asyncHandler(async (req, res) => {
 
+  console.log("Video upload request received");
+  console.log("File:", req.file);
+  console.log("Body:", req.body);
+  console.log("User:", req.user);
+
   if (!req.file) {
 
     throw new AppError("No video file uploaded", 400);
@@ -17,35 +22,11 @@ const createVideo = asyncHandler(async (req, res) => {
 
   try {
 
-    // Try to validate video duration, but handle FFmpeg not being available
+    // Skip FFmpeg for now - use default values
+    const duration = 60; // Default 1 minute
+    const thumbnail = null;
 
-    let duration = 60; // Default 1 minute
-
-    let thumbnail = null;
-
-    
-
-    try {
-
-      const durationResult = await validateVideoDuration(req.file.path);
-
-      duration = durationResult.duration;
-
-      
-
-      // Generate thumbnail
-
-      thumbnail = await generateThumbnail(req.file.path);
-
-    } catch (ffmpegError) {
-
-      console.warn("FFmpeg not available, using default duration and no thumbnail:", ffmpegError.message);
-
-      // Continue with default duration if FFmpeg is not available
-
-    }
-
-    
+    console.log("Using default duration:", duration);
 
     // Prepare video data
 
@@ -71,15 +52,39 @@ const createVideo = asyncHandler(async (req, res) => {
 
     const video = await videoService.createVideo(req.user._id, videoData);
 
-    
+    console.log("Video created successfully:", video._id);
+
+    // Emit real-time video upload notification
+    try {
+      const { getIO } = require("../config/socket");
+      const io = getIO();
+      
+      // Broadcast to all users for real-time feed updates
+      io.emit('new-video', {
+        videoId: video._id,
+        videoTitle: video.title,
+        uploaderUsername: req.user.username,
+        uploaderId: req.user._id,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log(`New video broadcast: ${video.title} by ${req.user.username}`);
+    } catch (socketError) {
+      console.error('Error broadcasting new video:', socketError);
+    }
 
     res.status(201).json({ success: true, data: video });
 
   } catch (error) {
 
+    console.error("Error creating video:", error);
+    console.error("Error stack:", error.stack);
+
     // Clean up file on error only
 
-    await cleanupFile(req.file.path);
+    if (req.file && req.file.path) {
+      await cleanupFile(req.file.path);
+    }
 
     throw error;
 
@@ -197,6 +202,32 @@ const likeVideo = asyncHandler(async (req, res) => {
 
   const video = await videoService.likeVideo(req.params.id, req.user._id);
 
+  // Emit real-time like notification
+  try {
+    const { getIO } = require("../config/socket");
+    const io = getIO();
+    
+    // Emit to the video owner
+    io.to(video.owner._id.toString()).emit('new-like', {
+      likerUsername: req.user.username,
+      videoTitle: video.title,
+      videoId: video._id,
+      timestamp: new Date().toISOString()
+    });
+
+    // Emit to video room for real-time updates
+    io.to(`video-${video._id}`).emit('like-update', {
+      videoId: video._id,
+      action: 'liked',
+      userId: req.user._id,
+      likes: video.likes
+    });
+
+    console.log(`Like notification sent to user ${video.owner._id} for video ${video.title}`);
+  } catch (socketError) {
+    console.error('Error emitting like notification:', socketError);
+  }
+
   res.status(200).json({ success: true, data: video });
 
 });
@@ -265,6 +296,10 @@ const getUserVideos = asyncHandler(async (req, res) => {
 
 });
 
+const getLikedVideos = asyncHandler(async (req, res) => {
+  const videos = await videoService.getLikedVideos(req.user._id);
+  res.status(200).json({ success: true, data: videos });
+});
 
 
 module.exports = {
@@ -298,6 +333,8 @@ module.exports = {
   getTrendingFeed,
 
   getUserVideos,
+
+  getLikedVideos,
 
 };
 

@@ -8,6 +8,9 @@ const AppError = require("../utils/AppError");
 
 const createVideo = async (ownerId, payload) => {
 
+  console.log("Creating video with owner:", ownerId);
+  console.log("Video payload:", payload);
+
   const video = await Video.create({
 
     ...payload,
@@ -17,6 +20,8 @@ const createVideo = async (ownerId, payload) => {
   });
 
 
+
+  console.log("Video saved to database:", video._id);
 
   return video;
 
@@ -430,7 +435,7 @@ const getFollowingFeed = async (userId, { skip, limit, search, sortBy }) => {
 
     case 'viewed':
 
-      sort = { views: -1, createdAt: -1 };
+      sort = { viewscount: -1, createdAt: -1 };
 
       break;
 
@@ -518,7 +523,7 @@ const getTrendingFeed = async ({ skip, limit, search, sortBy }) => {
 
     case 'viewed':
 
-      sort = { views: -1, createdAt: -1 };
+      sort = { viewscount: -1, createdAt: -1 };
 
       break;
 
@@ -588,6 +593,30 @@ const getUserVideos = async (userId) => {
 
 };
 
+const getLikedVideos = async (userId) => {
+  console.log('Getting liked videos for user:', userId);
+  // Find videos where the user has liked them
+  // The likedBy array contains user IDs who have liked the video
+  const videos = await Video.find({ 
+    likedBy: userId  // Find videos where userId is in the likedBy array
+  })
+    .sort({ createdAt: -1 })
+    .populate("owner", "username avatarKey")
+    .lean();
+
+  console.log('Found liked videos:', videos.length);
+  console.log('Video IDs:', videos.map(v => v._id));
+
+  const mappedVideos = videos.map(video => ({
+    ...video,
+    videoUrl: video.videoURL, // Map videoURL to videoUrl for frontend
+    reviews: video.reviewCount || 0,
+    views: video.viewscount || 0 // Map viewscount to views for frontend
+  }));
+
+  console.log('Mapped videos:', mappedVideos.length);
+  return mappedVideos;
+};
 
 
 module.exports = {
@@ -621,6 +650,8 @@ module.exports = {
   getTrendingFeed,
 
   getUserVideos,
+
+  getLikedVideos,
 
 };
 

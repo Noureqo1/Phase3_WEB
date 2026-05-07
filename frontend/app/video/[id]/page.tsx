@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import ReactPlayer from 'react-player';
 import apiClient from '@/lib/services/api';
 import { useAuth } from '@/app/providers/AuthProvider';
 import ReviewForm from '@/components/video/ReviewForm';
 import ReviewList from '@/components/video/ReviewList';
+import TestVideoPlayer from './test-video-player';
 
 interface Video {
   _id: string;
@@ -200,8 +200,8 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
             <div className="w-full h-full flex items-center justify-center bg-gray-900">
               <div className="text-center text-white p-8">
                 <div className="text-6xl mb-4">🎬</div>
-                <h3 className="text-xl font-semibold mb-2">Video unavailable</h3>
-                <p className="text-gray-400 mb-4">This video cannot be played at the moment</p>
+                <h3 className="text-xl font-semibold mb-2">Video Cannot Be Played</h3>
+                <p className="text-gray-400 mb-4">This video format is not supported or the file is corrupted. Please upload a valid MP4 video file.</p>
                 <button 
                   onClick={() => setVideoError(false)}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -211,27 +211,9 @@ export default function VideoPage({ params }: { params: Promise<{ id: string }> 
               </div>
             </div>
           ) : (
-            <ReactPlayer
-              src={video.videoUrl || ''}
-              controls
-              width="100%"
-              height="100%"
-              playing={false}
-              poster={video.thumbnail || ''}
-              config={{
-                file: {
-                  forceVideo: true,
-                  attributes: {
-                    crossOrigin: 'anonymous',
-                    poster: video.thumbnail || ''
-                  }
-                }
-              } as any}
-              onError={(e) => {
-                console.error('Video player error:', e);
-                setVideoError(true);
-              }}
-            />
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <TestVideoPlayer videoUrl={video.videoURL || video.videoUrl || ''} />
+            </div>
           )}
         </div>
 

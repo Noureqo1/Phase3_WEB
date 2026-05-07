@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Video Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        video { max-width: 800px; width: 100%; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Video Playback Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Direct Backend URL</h2>
+        <video controls>
+            <source src="http://localhost:5000/uploads/video-1778052325663-980103000.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Frontend Proxy URL</h2>
+        <video controls>
+            <source src="http://localhost:3000/uploads/video-1778052325663-980103000.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    
+    <div id="status"></div>
+    
+    <script>
+        // Test video loading
+        const videos = document.querySelectorAll('video');
+        const status = document.getElementById('status');
+        
+        videos.forEach((video, index) => {
+            video.addEventListener('error', (e) => {
+                const v = e.target;
+                status.innerHTML += `<p style="color: red;">Video ${index + 1} Error: ${v.error ? v.error.message : 'Unknown error'} (Code: ${v.error ? v.error.code : 'N/A'})</p>`;
+            });
+            
+            video.addEventListener('loadedmetadata', () => {
+                status.innerHTML += `<p style="color: green;">Video ${index + 1} loaded successfully. Duration: ${video.duration}s</p>`;
+            });
+        });
+    </script>
+</body>
+</html>

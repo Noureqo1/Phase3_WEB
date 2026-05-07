@@ -84,9 +84,39 @@ const updatePreferences = async (userId, preferencesPayload) => {
   return user;
 };
 
+const uploadAvatar = async (userId, file) => {
+  // Generate a unique filename
+  const path = require("path");
+  const fs = require("fs");
+  
+  const ext = path.extname(file.originalname);
+  const filename = `avatar_${userId}_${Date.now()}${ext}`;
+  const filepath = path.join(file.destination, filename);
+  
+  // Move the file to the new location with the new name
+  fs.renameSync(file.path, filepath);
+  
+  // Update user with avatar key
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { avatarKey: filename },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    }
+  ).select("-hashedPassword");
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  return user;
+};
+
 module.exports = {
   getMe,
   updateMe,
   getPublicProfileById,
   updatePreferences,
+  uploadAvatar,
 };

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Valid Video</title>
+</head>
+<body>
+    <h1>Test Video Playback</h1>
+    
+    <h2>Test 1: Direct Backend Video</h2>
+    <video controls width="600" style="max-width: 100%;">
+        <source src="http://localhost:5000/uploads/video-1778055679107-139768725.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    <h2>Test 2: Public Domain Video</h2>
+    <video controls width="600" style="max-width: 100%;">
+        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    <script>
+        document.querySelectorAll('video').forEach((video, index) => {
+            video.addEventListener('error', (e) => {
+                console.error(`Video ${index + 1} error:`, e.target.error);
+            });
+            video.addEventListener('loadedmetadata', () => {
+                console.log(`Video ${index + 1} loaded successfully. Duration: ${video.duration}s`);
+            });
+        });
+    </script>
+</body>
+</html>

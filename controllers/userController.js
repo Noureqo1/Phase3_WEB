@@ -48,6 +48,15 @@ const getFollowing = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: following });
 });
 
+const uploadAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file uploaded" });
+  }
+
+  const user = await userService.uploadAvatar(req.user._id, req.file);
+  res.status(200).json({ success: true, data: { avatarKey: user.avatarKey } });
+});
+
 module.exports = {
   getMe,
   updateMe,
@@ -57,4 +66,5 @@ module.exports = {
   unfollowUser,
   getFollowers,
   getFollowing,
+  uploadAvatar,
 };

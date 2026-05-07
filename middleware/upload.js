@@ -22,16 +22,32 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Only allow video files
-  const allowedMimes = ["video/mp4", "video/x-msvideo", "video/quicktime"];
-  const maxSize = 500 * 1024 * 1024; // 500 MB
-
+  console.log("File received:", file.mimetype, file.originalname, file.size);
+  
+  // Only accept standard MP4 files that work in browsers
+  const allowedMimes = ["video/mp4"];
+  
   if (!allowedMimes.includes(file.mimetype)) {
     return cb(
-      new Error(`Invalid file type. Only video files are allowed. Got: ${file.mimetype}`)
+      new Error(`Invalid file type. Only MP4 video files are allowed. Got: ${file.mimetype}`)
     );
   }
-
+  
+  // Check file extension
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (ext !== '.mp4') {
+    return cb(
+      new Error(`Invalid file extension. Only .mp4 files are allowed. Got: ${ext}`)
+    );
+  }
+  
+  // Check minimum file size (at least 1KB)
+  if (file.size < 1024) {
+    return cb(
+      new Error(`File too small. Minimum size is 1KB. Got: ${file.size} bytes`)
+    );
+  }
+  
   cb(null, true);
 };
 
@@ -40,6 +56,7 @@ const upload = multer({
   fileFilter,
   limits: {
     fileSize: 500 * 1024 * 1024, // 500 MB
+    fieldSize: 500 * 1024 * 1024, // 500 MB for fields
   },
 });
 

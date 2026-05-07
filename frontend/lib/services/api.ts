@@ -1,13 +1,10 @@
 import axios, { AxiosInstance } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Add request interceptor to include JWT token
@@ -26,8 +23,10 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear token on 401
       Cookies.remove('token');
-      // Optionally redirect to login
-      if (typeof window !== 'undefined') {
+      // Only redirect to login if it's not an upload request and we're not already on login page
+      if (typeof window !== 'undefined' && 
+          !error.config?.url?.includes('/videos') && 
+          !window.location.pathname.includes('/auth/')) {
         window.location.href = '/auth/login';
       }
     }
