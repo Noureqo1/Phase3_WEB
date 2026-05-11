@@ -38,6 +38,8 @@ apiClient.interceptors.response.use(
 export const authAPI = {
   register: (data: any) => apiClient.post('/auth/register', data),
   login: (data: any) => apiClient.post('/auth/login', data),
+  /** @description Clears the JWT cookie on the server */
+  logout: () => apiClient.post('/auth/logout'),
   me: () => apiClient.get('/users/me'),
 };
 
@@ -68,6 +70,14 @@ export const videoAPI = {
 export const feedAPI = {
   getFollowingFeed: (params?: any) => apiClient.get('/videos/feed/following', { params }),
   getTrendingFeed: (params?: any) => apiClient.get('/videos/feed/trending', { params }),
+};
+
+// Stripe / Payment APIs
+export const stripeAPI = {
+  createCheckoutSession: (data: any) => apiClient.post('/stripe/create-checkout-session', data),
+  getEarnings: () => apiClient.get('/stripe/earnings'),
+  getTipHistory: () => apiClient.get('/stripe/tip-history'),
+  getCreatorStats: (creatorId: string) => apiClient.get(`/stripe/creator-stats/${creatorId}`),
 };
 
 // Admin APIs

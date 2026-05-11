@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import apiClient from '@/lib/services/api';
+import apiClient, { authAPI } from '@/lib/services/api';
 import Cookies from 'js-cookie';
 import socketService from '@/lib/socket';
 
@@ -24,7 +24,7 @@ interface AuthContextType {
   error: string | null;
   isAuthenticated: boolean;
   login: (token: string, userData: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (userData: User) => void;
 }
 
@@ -62,20 +62,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, []);
 
+  /**
+   * Login: clears any existing session first, then sets the new token and user.
+   * This ensures account-switching works cleanly.
+   */
   const login = (token: string, userData: User) => {
+    // 1. Clear old session state
+    socketService.disconnect();
+    Cookies.remove('token');
+
+    // 2. Set new session
     Cookies.set('token', token, { expires: 7 });
     setUser(userData);
+    setError(null);
     
-    // Connect to Socket.io when user logs in
+    // 3. Connect to Socket.io with the new token
     socketService.connect(token);
   };
 
-  const logout = () => {
+  /**
+   * Logout: calls the backend to clear the server-side cookie, then
+   * clears frontend state and disconnects the socket.
+   */
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (err) {
+      // Server logout failed — still clear frontend state
+      console.error('Server logout error:', err);
+    }
+    
     Cookies.remove('token');
     setUser(null);
     setError(null);
     
-    // Disconnect from Socket.io when user logs out
+    // Disconnect from Socket.io
     socketService.disconnect();
     
     // Redirect to login page

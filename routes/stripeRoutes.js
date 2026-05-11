@@ -3,11 +3,12 @@ const { protect } = require('../middleware/auth');
 const { createCheckoutSession, getCreatorEarnings, getUserTipHistory } = require('../config/stripe');
 const asyncHandler = require('../middleware/asyncHandler');
 const mongoose = require('mongoose');
+const { createTipSchema, validate } = require('../validators/validationSchemas');
 
 const router = express.Router();
 
 // Create checkout session for tipping
-router.post('/create-checkout-session', protect, asyncHandler(async (req, res) => {
+router.post('/create-checkout-session', protect, validate(createTipSchema), asyncHandler(async (req, res) => {
   const { creatorId, amount, videoId, message } = req.body;
 
   // Validate input

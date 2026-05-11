@@ -10,9 +10,16 @@ const helmetConfig = helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "ws:", "wss:"],
-      frameSrc: ["'none'"],
+      scriptSrc: ["'self'", "https://js.stripe.com"],
+      connectSrc: [
+        "'self'",
+        "ws:",
+        "wss:",
+        "http://localhost:5000",
+        "http://localhost:9000",
+        "https://api.stripe.com",
+      ],
+      frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
       objectSrc: ["'none'"],
     },
   },
@@ -110,13 +117,8 @@ const socketLimiter = rateLimit({
     success: false,
     message: 'Too many connection attempts, please try again later.'
   },
-  keyGenerator: (req) => {
-    return req.ip || req.connection.remoteAddress;
-  },
-  skip: (req) => {
-    // Skip rate limiting for socket.io upgrade requests
-    return req.url.includes('socket.io/');
-  }
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 module.exports = {

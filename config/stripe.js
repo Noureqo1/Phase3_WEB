@@ -1,5 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_51234567890abcdef');
 const Transaction = require('../models/Transaction');
+const User = require('../models/User');
 const { getIO } = require('./socket');
 
 // Create a checkout session for tipping
@@ -110,6 +111,11 @@ const handleCheckoutSessionCompleted = async (session) => {
     });
 
     await transaction.save();
+
+    // Increment creator's wallet balance by the net amount
+    await User.findByIdAndUpdate(session.metadata.toCreator, {
+      $inc: { walletBalance: parseInt(session.metadata.netAmount) }
+    });
 
     // Send real-time notification to creator
     const io = getIO();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authAPI } from '@/lib/services/api';
@@ -9,12 +9,37 @@ import { useAuth } from '@/app/providers/AuthProvider';
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, logout, isAuthenticated, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  // On mount: if the user is already authenticated, silently logout to start
+  // a clean session. This is what enables account-switching by visiting /auth/login.
+  useEffect(() => {
+    const clearExistingSession = async () => {
+      if (isAuthenticated && !authLoading) {
+        setClearing(true);
+        try {
+          // Call the backend to clear the cookie, and clear frontend state
+          await authAPI.logout();
+        } catch {
+          // Ignore errors — we're just cleaning up
+        }
+        // Clear frontend cookie (AuthProvider.logout would redirect, so we do it manually)
+        const Cookies = (await import('js-cookie')).default;
+        Cookies.remove('token');
+        setClearing(false);
+        // Force a page reload to reset AuthProvider state cleanly
+        window.location.reload();
+      }
+    };
+
+    clearExistingSession();
+  }, [isAuthenticated, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,12 +67,24 @@ function LoginPageContent() {
       const from = searchParams.get('from') || (user.role === 'admin' ? '/admin' : '/discover');
       router.push(from);
     } catch (err: any) {
-      const message = err.response?.data?.message || 'Failed to login';
+      const message = err.response?.data?.message || err.response?.data?.error?.message || 'Failed to login';
       setError(message);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show a loading spinner while clearing the existing session
+  if (clearing || (isAuthenticated && !authLoading)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-600">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-lg">Preparing login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-600 py-12 px-4">
