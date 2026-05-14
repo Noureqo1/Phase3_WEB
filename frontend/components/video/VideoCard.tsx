@@ -9,7 +9,7 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import TipModal from '@/components/ui/TipModal';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import socketService from '@/lib/socket';
+import { getSocket } from '@/lib/socket';
 
 interface Video {
   _id: string;
@@ -58,13 +58,14 @@ export default function VideoCard({ video }: { video: Video }) {
 
   // Join video room for real-time updates
   useEffect(() => {
-    if (socketService.isConnected()) {
-      socketService.joinVideoRoom(video._id);
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('join-video-room', video._id);
     }
 
     // Listen for like updates
     const handleLikeUpdate = (event: CustomEvent) => {
-      const { videoId, action, likes } = event.detail;
+      const { videoId, likes } = event.detail;
       if (videoId === video._id) {
         setLikesCount(likes);
       }
@@ -73,8 +74,8 @@ export default function VideoCard({ video }: { video: Video }) {
     window.addEventListener('like-update', handleLikeUpdate as EventListener);
 
     return () => {
-      if (socketService.isConnected()) {
-        socketService.leaveVideoRoom(video._id);
+      if (socket.connected) {
+        socket.emit('leave-video-room', video._id);
       }
       window.removeEventListener('like-update', handleLikeUpdate as EventListener);
     };
@@ -98,14 +99,6 @@ export default function VideoCard({ video }: { video: Video }) {
 
       setIsLiked(!isLiked);
       setLikesCount(response.data.data.likes);
-
-      // Emit real-time like event
-      socketService.likeVideo({
-        videoId: video._id,
-        videoOwnerId: video.owner._id,
-        likerUsername: user.username,
-        videoTitle: video.title
-      });
     } catch (error) {
       console.error('Error liking video:', error);
     }

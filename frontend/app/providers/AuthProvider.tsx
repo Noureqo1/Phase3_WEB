@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import apiClient, { authAPI } from '@/lib/services/api';
 import Cookies from 'js-cookie';
-import socketService from '@/lib/socket';
 
 interface User {
   id: string;
@@ -47,9 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await apiClient.get('/users/me');
 
         setUser(response.data.data);
-        
-        // Connect to Socket.io when user is fetched
-        socketService.connect(token);
       } catch (err) {
         console.error('Failed to fetch user:', err);
         Cookies.remove('token');
@@ -68,16 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const login = (token: string, userData: User) => {
     // 1. Clear old session state
-    socketService.disconnect();
     Cookies.remove('token');
 
     // 2. Set new session
     Cookies.set('token', token, { expires: 7 });
     setUser(userData);
     setError(null);
-    
-    // 3. Connect to Socket.io with the new token
-    socketService.connect(token);
   };
 
   /**
@@ -95,9 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Cookies.remove('token');
     setUser(null);
     setError(null);
-    
-    // Disconnect from Socket.io
-    socketService.disconnect();
     
     // Redirect to login page
     if (typeof window !== 'undefined') {

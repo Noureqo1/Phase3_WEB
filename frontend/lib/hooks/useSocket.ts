@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import socketService from '@/lib/socket';
-import Cookies from 'js-cookie';
+import { getSocket } from '@/lib/socket';
 
 /**
- * React hook that wraps the existing SocketService singleton.
- * Manages connection lifecycle: connects on mount when authenticated,
- * disconnects on unmount.
+ * React hook that wraps the getSocket() singleton.
+ * Provides connection status for components that need it.
  *
  * @returns {{ isConnected: boolean }} Socket connection state
  */
@@ -15,23 +13,20 @@ export function useSocket() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const token = Cookies.get('token');
+    const socket = getSocket();
 
-    if (token && !socketService.isConnected()) {
-      socketService.connect(token);
-    }
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
 
-    // Poll connection status since the socket events are handled
-    // inside the SocketService class via CustomEvents
-    const interval = setInterval(() => {
-      setIsConnected(socketService.isConnected());
-    }, 1000);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
 
     // Initial check
-    setIsConnected(socketService.isConnected());
+    setIsConnected(socket.connected);
 
     return () => {
-      clearInterval(interval);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
     };
   }, []);
 

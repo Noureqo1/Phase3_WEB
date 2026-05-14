@@ -203,29 +203,19 @@ const likeVideo = asyncHandler(async (req, res) => {
   const video = await videoService.likeVideo(req.params.id, req.user._id);
 
   // Emit real-time like notification
-  try {
-    const { getIO } = require("../config/socket");
-    const io = getIO();
-    
-    // Emit to the video owner
-    io.to(video.owner._id.toString()).emit('new-like', {
-      likerUsername: req.user.username,
-      videoTitle: video.title,
-      videoId: video._id,
-      timestamp: new Date().toISOString()
-    });
+  const io = req.app.get('io');
+  if (io && video.owner) {
+    const ownerId = video.owner.toString();
+    const likerUsername = req.user.username;
+    const videoTitle = video.title;
 
-    // Emit to video room for real-time updates
-    io.to(`video-${video._id}`).emit('like-update', {
-      videoId: video._id,
-      action: 'liked',
-      userId: req.user._id,
-      likes: video.likes
-    });
-
-    console.log(`Like notification sent to user ${video.owner._id} for video ${video.title}`);
-  } catch (socketError) {
-    console.error('Error emitting like notification:', socketError);
+    if (ownerId !== req.user._id.toString()) {
+      io.to(ownerId).emit('new-like', {
+        likerUsername,
+        videoTitle,
+        videoId: video._id,
+      });
+    }
   }
 
   res.status(200).json({ success: true, data: video });
